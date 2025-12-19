@@ -3,6 +3,7 @@ use clap::{Parser, Subcommand, command};
 use crate::subcmds::{config, pack};
 
 mod conf_io;
+mod state_io;
 mod subcmds;
 
 #[derive(Parser)]
@@ -15,7 +16,6 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Subcommands {
-    #[command(arg_required_else_help = true)]
     Pack(pack::PackArgs),
     Config(config::ConfigArgs),
 }
@@ -24,14 +24,21 @@ fn main() {
     let configuration = match conf_io::get_config() {
         Ok(configuration) => configuration,
         Err(_) => {
-            println!("Unable to get configuration!");
+            eprintln!("ERROR: Unable to get configuration!");
+            return;
+        }
+    };
+    let state = match state_io::get_state(&configuration) {
+        Ok(state) => state,
+        Err(_) => {
+            eprintln!("ERROR: Unable to read state!");
             return;
         }
     };
 
     let cli = Cli::parse();
     match cli.command {
-        Subcommands::Pack(args) => subcmds::pack::main(args, &configuration),
-        Subcommands::Config(args) => subcmds::config::main(args, &configuration),
+        Subcommands::Pack(args) => subcmds::pack::main(args, &configuration, &state),
+        Subcommands::Config(args) => subcmds::config::main(args, &configuration, &state),
     }
 }

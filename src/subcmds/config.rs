@@ -1,8 +1,7 @@
 use clap::{Args, Subcommand, command};
-use std::env;
-use std::path::PathBuf;
 
 use crate::conf_io::Configuration;
+use crate::state_io::MpregState;
 
 #[derive(Debug, Args)]
 pub struct ConfigArgs {
@@ -20,21 +19,20 @@ enum ConfigCommands {
     Show {
         key: Option<String>,
     },
+    //Showall,
 }
 
-pub fn main(args: ConfigArgs, conf: &Configuration) {
+pub fn main(args: ConfigArgs, conf: &Configuration, state: &MpregState) {
     match args.command {
-        Some(ConfigCommands::Show { key }) => show(key),
+        //Some(ConfigCommands::Showall) => showall(conf),
+        Some(ConfigCommands::Show { key }) => show(key, conf),
         Some(ConfigCommands::Set { key, value }) => println!("bum"),
         None => println!("bongle"),
     }
 }
 
-fn show(key: Option<String>) {
-    let Some(home) = env::home_dir() else {
-        return ();
+fn show(key: Option<String>, conf: &Configuration) {
+    let Some(key) = key else {
+        return;
     };
-
-    // TODO: make this customisable
-    let config_path = home.join(PathBuf::from(format!(".mpreg/config.toml")));
 }

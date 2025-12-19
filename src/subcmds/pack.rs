@@ -3,6 +3,7 @@ use std::fs::{self, DirBuilder};
 use std::path::PathBuf;
 
 use crate::conf_io::Configuration;
+use crate::state_io::MpregState;
 
 #[derive(Debug, Args)]
 pub struct PackArgs {
@@ -42,14 +43,14 @@ enum PackCommands {
     },
 }
 
-pub fn main(args: PackArgs, conf: &Configuration) {
+pub fn main(args: PackArgs, conf: &Configuration, state: &MpregState) {
     match args.command {
         Some(PackCommands::Create { name }) => create(name, conf),
         Some(PackCommands::List) => list(conf),
         Some(PackCommands::Delete { target }) => delete(target, conf),
         Some(PackCommands::Rename { old, new }) => rename(old, new, conf),
         Some(PackCommands::Switch { target }) => switch(target),
-        None => (),
+        None => show(state),
     }
 }
 
@@ -67,7 +68,7 @@ fn create(name: String, conf: &Configuration) {
             return;
         }
         Err(err) => {
-            println!("ERROR: Error occurred ({err})");
+            eprintln!("ERROR: Error occurred ({err})");
             return;
         }
     }
@@ -76,7 +77,7 @@ fn create(name: String, conf: &Configuration) {
 fn list(conf: &Configuration) {
     let modpack_dir = &conf.modpack_dir;
     let Ok(modpack_dir_entries) = modpack_dir.read_dir() else {
-        println!("ERROR: Could not read the modpack directory!");
+        eprintln!("ERROR: Could not read the modpack directory!");
         return;
     };
     for entry in modpack_dir_entries {
@@ -91,7 +92,7 @@ fn delete(target: String, conf: &Configuration) {
     let modpack = conf.modpack_dir.join(&target);
     match try_delete_modpack(&modpack) {
         Ok(_) => println!("OK: {target} deleted"),
-        Err(message) => println!("ERROR: {message}"),
+        Err(message) => eprintln!("ERROR: {message}"),
     }
 }
 
@@ -100,12 +101,25 @@ fn rename(old: String, new: String, conf: &Configuration) {
     let new_path = conf.modpack_dir.join(&new);
     match try_rename_modpack(&old_path, &new_path) {
         Ok(_) => println!("OK: {old} renamed to {new}"),
-        Err(message) => println!("ERROR: {message}"),
+        Err(message) => eprintln!("ERROR: {message}"),
     }
 }
 
 fn switch(target: String) {
     println!("Moving to {target}");
+}
+
+fn show(state: &MpregState) {
+    match &state.current_modpack {
+        None => println!("No modpack currently active"),
+        Some(modpack) => {
+            let name = match modpack.file_name() {
+                Some(name) => name,
+                None => modpack.as_os_str(),
+            };
+            println!("Current modpack: {}", name.display());
+        }
+    }
 }
 
 /// Determine if the provided path is a valid modpack
@@ -117,7 +131,7 @@ fn is_modpack(modpack: &PathBuf) -> bool {
 
     // A modpack should only contain symlinks
     let Ok(entries) = modpack.read_dir() else {
-        println!("ERROR: Could not access modpack");
+        eprintln!("ERROR: Could not access modpack");
         return false;
     };
 
